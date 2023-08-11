@@ -8,7 +8,7 @@ import tqdm
 import torch
 import torch.utils.data as data
 
-from models.diffusion import Model
+from models.diffusion import Model, Cond_Model
 from models.ema import EMAHelper
 from functions import get_optimizer
 from functions.losses import loss_registry
@@ -62,6 +62,7 @@ class Diffusion(object):
     def __init__(self, args, config, device=None):
         self.args = args
         self.config = config
+        self.cond = args.cond
         if device is None:
             device = (
                 torch.device("cuda")
@@ -105,7 +106,13 @@ class Diffusion(object):
             shuffle=True,
             num_workers=config.data.num_workers,
         )
-        model = Model(config)
+
+        if self.cond:
+            model = Cond_Model(config)
+            logging.info("Using Conditional DDIM.")
+        else:
+            model = Model(config)
+            logging.info("Using DDIM.")
 
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
@@ -149,7 +156,11 @@ class Diffusion(object):
                     low=0, high=self.num_timesteps, size=(n // 2 + 1,)
                 ).to(self.device)
                 t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
-                loss = loss_registry[config.model.type](model, x, t, e, b)
+
+                if self.cond:
+                    loss = loss_registry[config.model.type](model, x, t, e, b, y=y)
+                else:
+                    loss = loss_registry[config.model.type](model, x, t, e, b)
 
                 tb_logger.add_scalar("loss", loss, global_step=step)
 

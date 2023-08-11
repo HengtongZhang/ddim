@@ -85,6 +85,9 @@ def parse_args_and_config():
         default=0.0,
         help="eta used to control the variances of sigma",
     )
+    parser.add_argument(
+        "--cond", action="store_true", help="Conditional generation."
+    )
     parser.add_argument("--sequence", action="store_true")
 
     args = parser.parse_args()

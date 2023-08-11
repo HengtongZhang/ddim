@@ -2,7 +2,7 @@ import torch
 import os
 import PIL
 from .vision import VisionDataset
-from .utils import download_file_from_google_drive, check_integrity
+from .utils import check_integrity
 
 
 class CelebA(VisionDataset):
@@ -40,9 +40,9 @@ class CelebA(VisionDataset):
         # ("0B7EVK8r0v71pbWNEUjJKdDQ3dGc", "b6cd7e93bc7a96c2dc33f819aa3ac651", "img_align_celeba_png.7z"),
         # ("0B7EVK8r0v71peklHb0pGdDl6R28", "b6cd7e93bc7a96c2dc33f819aa3ac651", "img_celeba.7z"),
         ("0B7EVK8r0v71pblRyaVFSWGxPY0U", "75e246fa4810816ffd6ee81facbd244c", "list_attr_celeba.txt"),
-        ("1_ee_0u7vcNLOfNLegJRHmolfH5ICW-XS", "32bd1bd63d3c78cd57e08160ec5ed1e2", "identity_CelebA.txt"),
-        ("0B7EVK8r0v71pbThiMVRxWXZ4dU0", "00566efa6fedff7a56946cd1c10f1c16", "list_bbox_celeba.txt"),
-        ("0B7EVK8r0v71pd0FJY3Blby1HUTQ", "cc24ecafdb5b50baae59b03474781f8c", "list_landmarks_align_celeba.txt"),
+        # ("1_ee_0u7vcNLOfNLegJRHmolfH5ICW-XS", "32bd1bd63d3c78cd57e08160ec5ed1e2", "identity_CelebA.txt"),
+        # ("0B7EVK8r0v71pbThiMVRxWXZ4dU0", "00566efa6fedff7a56946cd1c10f1c16", "list_bbox_celeba.txt"),
+        # ("0B7EVK8r0v71pd0FJY3Blby1HUTQ", "cc24ecafdb5b50baae59b03474781f8c", "list_landmarks_align_celeba.txt"),
         # ("0B7EVK8r0v71pTzJIdlJWdHczRlU", "063ee6ddb681f96bc9ca28c6febb9d1a", "list_landmarks_celeba.txt"),
         ("0B7EVK8r0v71pY0NSMzRuSXJEVkk", "d32c9cbf5e040fd4025c592c306e6668", "list_eval_partition.txt"),
     ]
@@ -63,7 +63,12 @@ class CelebA(VisionDataset):
         self.target_transform = target_transform
 
         if download:
-            self.download()
+            # self.download()
+            raise NotImplementedError
+
+        import zipfile
+        with zipfile.ZipFile(os.path.join(self.root, self.base_folder, "img_align_celeba.zip"), "r") as f:
+            f.extractall(os.path.join(self.root, self.base_folder))
 
         if not self._check_integrity():
             raise RuntimeError('Dataset not found or corrupted.' +
@@ -85,23 +90,23 @@ class CelebA(VisionDataset):
         with open(os.path.join(self.root, self.base_folder, "list_eval_partition.txt"), "r") as f:
             splits = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)
 
-        with open(os.path.join(self.root, self.base_folder, "identity_CelebA.txt"), "r") as f:
-            self.identity = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)
+        # with open(os.path.join(self.root, self.base_folder, "identity_CelebA.txt"), "r") as f:
+        #     self.identity = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)
 
-        with open(os.path.join(self.root, self.base_folder, "list_bbox_celeba.txt"), "r") as f:
-            self.bbox = pandas.read_csv(f, delim_whitespace=True, header=1, index_col=0)
+        # with open(os.path.join(self.root, self.base_folder, "list_bbox_celeba.txt"), "r") as f:
+        #     self.bbox = pandas.read_csv(f, delim_whitespace=True, header=1, index_col=0)
 
-        with open(os.path.join(self.root, self.base_folder, "list_landmarks_align_celeba.txt"), "r") as f:
-            self.landmarks_align = pandas.read_csv(f, delim_whitespace=True, header=1)
+        # with open(os.path.join(self.root, self.base_folder, "list_landmarks_align_celeba.txt"), "r") as f:
+        #     self.landmarks_align = pandas.read_csv(f, delim_whitespace=True, header=1)
 
         with open(os.path.join(self.root, self.base_folder, "list_attr_celeba.txt"), "r") as f:
             self.attr = pandas.read_csv(f, delim_whitespace=True, header=1)
 
         mask = (splits[1] == split)
         self.filename = splits[mask].index.values
-        self.identity = torch.as_tensor(self.identity[mask].values)
-        self.bbox = torch.as_tensor(self.bbox[mask].values)
-        self.landmarks_align = torch.as_tensor(self.landmarks_align[mask].values)
+        # self.identity = torch.as_tensor(self.identity[mask].values)
+        # self.bbox = torch.as_tensor(self.bbox[mask].values)
+        # self.landmarks_align = torch.as_tensor(self.landmarks_align[mask].values)
         self.attr = torch.as_tensor(self.attr[mask].values)
         self.attr = (self.attr + 1) // 2  # map from {-1, 1} to {0, 1}
 
@@ -118,17 +123,8 @@ class CelebA(VisionDataset):
         return os.path.isdir(os.path.join(self.root, self.base_folder, "img_align_celeba"))
 
     def download(self):
-        import zipfile
-
-        if self._check_integrity():
-            print('Files already downloaded and verified')
-            return
-
-        for (file_id, md5, filename) in self.file_list:
-            download_file_from_google_drive(file_id, os.path.join(self.root, self.base_folder), filename, md5)
-
-        with zipfile.ZipFile(os.path.join(self.root, self.base_folder, "img_align_celeba.zip"), "r") as f:
-            f.extractall(os.path.join(self.root, self.base_folder))
+        # Download from Google Drive is infeasible.
+        pass
 
     def __getitem__(self, index):
         X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
@@ -137,12 +133,12 @@ class CelebA(VisionDataset):
         for t in self.target_type:
             if t == "attr":
                 target.append(self.attr[index, :])
-            elif t == "identity":
-                target.append(self.identity[index, 0])
-            elif t == "bbox":
-                target.append(self.bbox[index, :])
-            elif t == "landmarks":
-                target.append(self.landmarks_align[index, :])
+            # elif t == "identity":
+            #     target.append(self.identity[index, 0])
+            # elif t == "bbox":
+            #     target.append(self.bbox[index, :])
+            # elif t == "landmarks":
+            #     target.append(self.landmarks_align[index, :])
             else:
                 raise ValueError("Target type \"{}\" is not recognized.".format(t))
         target = tuple(target) if len(target) > 1 else target[0]
