@@ -18,18 +18,20 @@ def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
 
     parser.add_argument(
-        "--config", type=str, required=True, help="Path to the config file"
+        "--config", type=str, default="celeba.yml", 
+        required=True,  help="Path to the config file"
     )
     parser.add_argument("--seed", type=int, default=1234, help="Random seed")
     parser.add_argument(
-        "--exp", type=str, default="exp", help="Path for saving running related data."
+        "--exp", type=str, default="ddim_exp", help="Path for saving running related data."
     )
     parser.add_argument(
-        "--doc",
-        type=str,
-        required=True,
+        "--doc", type=str, default="logs", required=True,
         help="A string for documentation purpose. "
         "Will be the name of the log folder.",
+    )
+    parser.add_argument(
+        "--data_dir", type=str, default="data", help="Path for the dataset."
     )
     parser.add_argument(
         "--comment", type=str, default="", help="A string for experiment comment"
@@ -107,7 +109,8 @@ def parse_args_and_config():
                 if args.ni:
                     overwrite = True
                 else:
-                    response = input("Folder already exists. Overwrite? (Y/N)")
+                    # response = input("Folder already exists. Overwrite? (Y/N)")
+                    response = "Y"
                     if response.upper() == "Y":
                         overwrite = True
 

@@ -1,6 +1,8 @@
-import torch
+import torchvision.transforms
 import os
+import h5py
 import PIL
+import numpy as np
 from .vision import VisionDataset
 from .utils import check_integrity
 
@@ -30,7 +32,7 @@ class CelebA(VisionDataset):
             downloaded again.
     """
 
-    base_folder = "celeba"
+    # base_folder = "celeba"
     # There currently does not appear to be a easy way to extract 7z in python (without introducing additional
     # dependencies). The "in-the-wild" (not aligned+cropped) images are only in 7z, so they are not available
     # right now.
@@ -62,20 +64,10 @@ class CelebA(VisionDataset):
         self.transform = transform
         self.target_transform = target_transform
 
-        if download:
-            # self.download()
-            raise NotImplementedError
-
-        import zipfile
-        with zipfile.ZipFile(os.path.join(self.root, self.base_folder, "img_align_celeba.zip"), "r") as f:
-            f.extractall(os.path.join(self.root, self.base_folder))
-
-        if not self._check_integrity():
-            raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
-
         self.transform = transform
         self.target_transform = target_transform
+
+        h5data = h5py.File(os.path.join(self.root, "celeba-64.hdf5"), "r")
 
         if split.lower() == "train":
             split = 0
@@ -87,47 +79,27 @@ class CelebA(VisionDataset):
             raise ValueError('Wrong split entered! Please use split="train" '
                              'or split="valid" or split="test"')
 
-        with open(os.path.join(self.root, self.base_folder, "list_eval_partition.txt"), "r") as f:
+        with open(os.path.join(self.root, "list_eval_partition.txt"), "r") as f:
             splits = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)
 
-        # with open(os.path.join(self.root, self.base_folder, "identity_CelebA.txt"), "r") as f:
-        #     self.identity = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)
-
-        # with open(os.path.join(self.root, self.base_folder, "list_bbox_celeba.txt"), "r") as f:
-        #     self.bbox = pandas.read_csv(f, delim_whitespace=True, header=1, index_col=0)
-
-        # with open(os.path.join(self.root, self.base_folder, "list_landmarks_align_celeba.txt"), "r") as f:
-        #     self.landmarks_align = pandas.read_csv(f, delim_whitespace=True, header=1)
-
-        with open(os.path.join(self.root, self.base_folder, "list_attr_celeba.txt"), "r") as f:
-            self.attr = pandas.read_csv(f, delim_whitespace=True, header=1)
+        # with open(os.path.join(self.root, "list_attr_celeba.txt"), "r") as f:
+            # self.attr = pandas.read_csv(f, delim_whitespace=True, header=1)
 
         mask = (splits[1] == split)
         self.filename = splits[mask].index.values
         # self.identity = torch.as_tensor(self.identity[mask].values)
         # self.bbox = torch.as_tensor(self.bbox[mask].values)
         # self.landmarks_align = torch.as_tensor(self.landmarks_align[mask].values)
-        self.attr = torch.as_tensor(self.attr[mask].values)
+        self.data = h5data['samples']
+        self.attr = h5data['targets']
+        self.data = np.asarray(self.data[mask])
+        self.attr = np.asarray(self.attr[mask])
+        # self.attr = torch.as_tensor(self.attr[mask].values)
         self.attr = (self.attr + 1) // 2  # map from {-1, 1} to {0, 1}
 
-    def _check_integrity(self):
-        for (_, md5, filename) in self.file_list:
-            fpath = os.path.join(self.root, self.base_folder, filename)
-            _, ext = os.path.splitext(filename)
-            # Allow original archive to be deleted (zip and 7z)
-            # Only need the extracted images
-            if ext not in [".zip", ".7z"] and not check_integrity(fpath, md5):
-                return False
-
-        # Should check a hash of the images
-        return os.path.isdir(os.path.join(self.root, self.base_folder, "img_align_celeba"))
-
-    def download(self):
-        # Download from Google Drive is infeasible.
-        pass
-
     def __getitem__(self, index):
-        X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
+        # X = PIL.Image.open(os.path.join(self.root, "img_align_celeba", self.filename[index]))
+        X = self.data[index]
 
         target = []
         for t in self.target_type:

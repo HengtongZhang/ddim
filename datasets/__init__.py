@@ -46,13 +46,13 @@ def get_dataset(args, config):
 
     if config.data.dataset == "CIFAR10":
         dataset = CIFAR10(
-            os.path.join(args.exp, "datasets", "cifar10"),
+            os.path.join(args.data_dir, "cifar10"),
             train=True,
             download=True,
             transform=tran_transform,
         )
         test_dataset = CIFAR10(
-            os.path.join(args.exp, "datasets", "cifar10_test"),
+            os.path.join(args.data_dir, "cifar10_test"),
             train=False,
             download=True,
             transform=test_transform,
@@ -67,10 +67,11 @@ def get_dataset(args, config):
         y2 = cx + 64
         if config.data.random_flip:
             dataset = CelebA(
-                root=os.path.join(args.exp, "datasets", "celeba"),
+                root=os.path.join(args.data_dir, "celeba"),
                 split="train",
                 transform=transforms.Compose(
                     [
+                        transforms.ToPILImage(),
                         Crop(x1, x2, y1, y2),
                         transforms.Resize(config.data.image_size),
                         transforms.RandomHorizontalFlip(),
@@ -81,10 +82,11 @@ def get_dataset(args, config):
             )
         else:
             dataset = CelebA(
-                root=os.path.join(args.exp, "datasets", "celeba"),
+                root=os.path.join(args.data_dir, "celeba"),
                 split="train",
                 transform=transforms.Compose(
-                    [
+                    [   
+                        transforms.ToPILImage(),
                         Crop(x1, x2, y1, y2),
                         transforms.Resize(config.data.image_size),
                         transforms.ToTensor(),
@@ -94,10 +96,11 @@ def get_dataset(args, config):
             )
 
         test_dataset = CelebA(
-            root=os.path.join(args.exp, "datasets", "celeba"),
+            root=os.path.join(args.data_dir, "celeba"),
             split="test",
             transform=transforms.Compose(
                 [
+                    transforms.ToPILImage(),
                     Crop(x1, x2, y1, y2),
                     transforms.Resize(config.data.image_size),
                     transforms.ToTensor(),
