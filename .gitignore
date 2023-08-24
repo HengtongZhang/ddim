@@ -1,6 +1,7 @@
 .vscode
 .DS_Store
 __pycache__/
-img_align_celeba/
-ddim_exp/
+celeba/
+cifar10/
+ddim_exp*/
 data/

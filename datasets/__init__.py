@@ -1,30 +1,9 @@
 import os
 import torch
-import numbers
 import torchvision.transforms as transforms
-import torchvision.transforms.functional as F
-from torchvision.datasets import CIFAR10
+from datasets.cifar import CIFAR10
 from datasets.celeba import CelebA
-# from datasets.ffhq import FFHQ
-# from datasets.lsun import LSUN
 # from torch.utils.data import Subset
-import numpy as np
-
-
-class Crop(object):
-    def __init__(self, x1, x2, y1, y2):
-        self.x1 = x1
-        self.x2 = x2
-        self.y1 = y1
-        self.y2 = y2
-
-    def __call__(self, img):
-        return F.crop(img, self.x1, self.y1, self.x2 - self.x1, self.y2 - self.y1)
-
-    def __repr__(self):
-        return self.__class__.__name__ + "(x1={}, x2={}, y1={}, y2={})".format(
-            self.x1, self.x2, self.y1, self.y2
-        )
 
 
 def get_dataset(args, config):
@@ -48,23 +27,23 @@ def get_dataset(args, config):
         dataset = CIFAR10(
             os.path.join(args.data_dir, "cifar10"),
             train=True,
-            download=True,
+            download=False,
             transform=tran_transform,
         )
         test_dataset = CIFAR10(
-            os.path.join(args.data_dir, "cifar10_test"),
+            os.path.join(args.data_dir, "cifar10"),
             train=False,
-            download=True,
+            download=False,
             transform=test_transform,
         )
 
     elif config.data.dataset == "CELEBA":
-        cx = 89
-        cy = 121
-        x1 = cy - 64
-        x2 = cy + 64
-        y1 = cx - 64
-        y2 = cx + 64
+        # cx = 89
+        # cy = 121
+        # x1 = cy - 64
+        # x2 = cy + 64
+        # y1 = cx - 64
+        # y2 = cx + 64
         if config.data.random_flip:
             dataset = CelebA(
                 root=os.path.join(args.data_dir, "celeba"),
@@ -72,7 +51,6 @@ def get_dataset(args, config):
                 transform=transforms.Compose(
                     [
                         transforms.ToPILImage(),
-                        Crop(x1, x2, y1, y2),
                         transforms.Resize(config.data.image_size),
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
@@ -87,7 +65,6 @@ def get_dataset(args, config):
                 transform=transforms.Compose(
                     [   
                         transforms.ToPILImage(),
-                        Crop(x1, x2, y1, y2),
                         transforms.Resize(config.data.image_size),
                         transforms.ToTensor(),
                     ]
@@ -101,16 +78,15 @@ def get_dataset(args, config):
             transform=transforms.Compose(
                 [
                     transforms.ToPILImage(),
-                    Crop(x1, x2, y1, y2),
                     transforms.Resize(config.data.image_size),
                     transforms.ToTensor(),
                 ]
             ),
             download=False,
         )
-
     else:
         dataset, test_dataset = None, None
+        raise NotImplementedError
 
     return dataset, test_dataset
 

@@ -8,7 +8,7 @@ import tqdm
 import torch
 import torch.utils.data as data
 
-from models.diffusion import Model, Cond_Model
+from models.diffusion import Model
 from models.ema import EMAHelper
 from functions import get_optimizer
 from functions.losses import loss_registry
@@ -106,14 +106,10 @@ class Diffusion(object):
             shuffle=True,
             num_workers=config.data.num_workers,
         )
-
-        if self.cond:
-            model = Cond_Model(config)
-            logging.info("Using Conditional DDIM.")
-        else:
-            model = Model(config)
-            logging.info("Using DDIM.")
-
+        
+        model = Model(config, self.args.cond)
+        logging.info("Using DDIM.")
+        
         model = model.to(self.device)
         model = torch.nn.DataParallel(model)
 
@@ -200,8 +196,8 @@ class Diffusion(object):
 
                 data_start = time.time()
 
-    def sample(self):
-        model = Model(self.config)
+    def sample(self, y=None):
+        model = Model(self.config, self.args.cond)
 
         if not self.args.use_pretrained:
             if getattr(self.config.sampling, "ckpt_id", None) is None:
@@ -244,15 +240,15 @@ class Diffusion(object):
         model.eval()
 
         if self.args.fid:
-            self.sample_fid(model)
+            self.sample_fid(model, y)
         elif self.args.interpolation:
-            self.sample_interpolation(model)
+            self.sample_interpolation(model, y)
         elif self.args.sequence:
-            self.sample_sequence(model)
+            self.sample_sequence(model, y)
         else:
             raise NotImplementedError("Sample procedeure not defined")
 
-    def sample_fid(self, model):
+    def sample_fid(self, model, y=None):
         config = self.config
         img_id = len(glob.glob(f"{self.args.image_folder}/*"))
         print(f"starting from image {img_id}")
@@ -272,7 +268,7 @@ class Diffusion(object):
                     device=self.device,
                 )
 
-                x = self.sample_image(x, model)
+                x = self.sample_image(x, model, y=y)
                 x = inverse_data_transform(config, x)
 
                 for i in range(n):
@@ -281,7 +277,7 @@ class Diffusion(object):
                     )
                     img_id += 1
 
-    def sample_sequence(self, model):
+    def sample_sequence(self, model, y=None):
         config = self.config
 
         x = torch.randn(
@@ -294,7 +290,7 @@ class Diffusion(object):
 
         # NOTE: This means that we are producing each predicted x0, not x_{t-1} at timestep t.
         with torch.no_grad():
-            _, x = self.sample_image(x, model, last=False)
+            _, x = self.sample_image(x, model, y=y, last=False)
 
         x = [inverse_data_transform(config, y) for y in x]
 
@@ -304,7 +300,7 @@ class Diffusion(object):
                     x[i][j], os.path.join(self.args.image_folder, f"{j}_{i}.png")
                 )
 
-    def sample_interpolation(self, model):
+    def sample_interpolation(self, model, y=None):
         config = self.config
 
         def slerp(z1, z2, alpha):
@@ -339,12 +335,12 @@ class Diffusion(object):
         # Hard coded here, modify to your preferences
         with torch.no_grad():
             for i in range(0, x.size(0), 8):
-                xs.append(self.sample_image(x[i : i + 8], model))
+                xs.append(self.sample_image(x[i : i + 8], model, y=y))
         x = inverse_data_transform(config, torch.cat(xs, dim=0))
         for i in range(x.size(0)):
             tvu.save_image(x[i], os.path.join(self.args.image_folder, f"{i}.png"))
 
-    def sample_image(self, x, model, last=True):
+    def sample_image(self, x, model, y=None, last=True):
         try:
             skip = self.args.skip
         except Exception:
@@ -366,7 +362,7 @@ class Diffusion(object):
                 raise NotImplementedError
             from functions.denoising import generalized_steps
 
-            xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta)
+            xs = generalized_steps(x, seq, model, self.betas, eta=self.args.eta, y=y)
             x = xs
         elif self.args.sample_type == "ddpm_noisy":
             if self.args.skip_type == "uniform":
@@ -384,7 +380,7 @@ class Diffusion(object):
                 raise NotImplementedError
             from functions.denoising import ddpm_steps
 
-            x = ddpm_steps(x, seq, model, self.betas)
+            x = ddpm_steps(x, seq, model, self.betas, y=y)
         else:
             raise NotImplementedError
         if last:

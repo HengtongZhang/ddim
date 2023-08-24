@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+from tqdm import tqdm
 
 
 def compute_alpha(beta, t):
@@ -13,13 +15,14 @@ def generalized_steps(x, seq, model, b, **kwargs):
         seq_next = [-1] + list(seq[:-1])
         x0_preds = []
         xs = [x]
-        for i, j in zip(reversed(seq), reversed(seq_next)):
+        for i, j in tqdm(zip(reversed(seq), reversed(seq_next))):
             t = (torch.ones(n) * i).to(x.device)
             next_t = (torch.ones(n) * j).to(x.device)
             at = compute_alpha(b, t.long())
             at_next = compute_alpha(b, next_t.long())
             xt = xs[-1].to('cuda')
-            et = model(xt, t)
+            _y = kwargs.get("y").to('cuda')
+            et = model(xt, t, y=_y)
             x0_t = (xt - et * (1 - at).sqrt()) / at.sqrt()
             x0_preds.append(x0_t.to('cpu'))
             c1 = (
@@ -32,7 +35,7 @@ def generalized_steps(x, seq, model, b, **kwargs):
     return xs, x0_preds
 
 
-def ddpm_steps(x, seq, model, b, **kwargs):
+def ddpm_steps(x, seq, model, b, y=None):
     with torch.no_grad():
         n = x.size(0)
         seq_next = [-1] + list(seq[:-1])
@@ -46,8 +49,8 @@ def ddpm_steps(x, seq, model, b, **kwargs):
             atm1 = compute_alpha(betas, next_t.long())
             beta_t = 1 - at / atm1
             x = xs[-1].to('cuda')
-
-            output = model(x, t.float())
+            _y = get_targets(y, model.module.cl, x.shape[0]).to('cuda')
+            output = model(x, t.float(), y=_y)
             e = output
 
             x0_from_e = (1.0 / at).sqrt() * x - (1.0 / at - 1).sqrt() * e

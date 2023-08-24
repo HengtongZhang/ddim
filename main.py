@@ -18,12 +18,16 @@ def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
 
     parser.add_argument(
-        "--config", type=str, default="celeba.yml", 
-        required=True,  help="Path to the config file"
+        "--config", type=str, default="celeba.yml", required=True,
+        help="Path to the config file"
     )
-    parser.add_argument("--seed", type=int, default=1234, help="Random seed")
     parser.add_argument(
-        "--exp", type=str, default="ddim_exp", help="Path for saving running related data."
+        "--seed", type=int, default=1234, 
+        help="Random seed"
+    )
+    parser.add_argument(
+        "--exp", type=str, default="ddim",
+        help="Path for saving running related data."
     )
     parser.add_argument(
         "--doc", type=str, default="logs", required=True,
@@ -31,66 +35,67 @@ def parse_args_and_config():
         "Will be the name of the log folder.",
     )
     parser.add_argument(
-        "--data_dir", type=str, default="data", help="Path for the dataset."
+        "--data_dir", type=str, default=".",
+        help="Path for the dataset."
+    )
+    parser.add_argument(  # TODO: Check here.
+        "--cond", action="store_true",
+        help="Conditional generation."
     )
     parser.add_argument(
-        "--comment", type=str, default="", help="A string for experiment comment"
+        "--comment", type=str, default="",
+        help="A string for experiment comment"
     )
     parser.add_argument(
-        "--verbose",
-        type=str,
-        default="info",
+        "--verbose", type=str, default="info",
         help="Verbose level: info | debug | warning | critical",
     )
-    parser.add_argument("--test", action="store_true", help="Whether to test the model")
     parser.add_argument(
-        "--sample",
-        action="store_true",
+        "--test", action="store_true", 
+        help="Whether to test the model"
+    )
+    parser.add_argument(
+        "--sample", action="store_true",
         help="Whether to produce samples from the model",
     )
-    parser.add_argument("--fid", action="store_true")
+    parser.add_argument(
+        "--fid", action="store_true",
+        help="Sampling from the generalized model for FID evaluation"
+    )
     parser.add_argument("--interpolation", action="store_true")
     parser.add_argument(
-        "--resume_training", action="store_true", help="Whether to resume training"
+        "--resume_training", action="store_true", 
+        help="Whether to resume training"
     )
     parser.add_argument(
-        "-i",
-        "--image_folder",
-        type=str,
-        default="images",
+        "-i", "--image_folder", type=str, default="images",
         help="The folder name of samples",
     )
     parser.add_argument(
-        "--ni",
-        action="store_true",
+        "--ni", action="store_true",
         help="No interaction. Suitable for Slurm Job launcher",
     )
     parser.add_argument("--use_pretrained", action="store_true")
     parser.add_argument(
-        "--sample_type",
-        type=str,
-        default="generalized",
-        help="sampling approach (generalized or ddpm_noisy)",
+        "--sample_type", type=str, default="generalized",
+        help="Sampling approach (generalized or ddpm_noisy)",
     )
     parser.add_argument(
-        "--skip_type",
-        type=str,
-        default="uniform",
-        help="skip according to (uniform or quadratic)",
+        "--skip_type", type=str, default="uniform",
+        help="Skip according to (uniform or quadratic)",
     )
     parser.add_argument(
-        "--timesteps", type=int, default=1000, help="number of steps involved"
+        "--timesteps", type=int, default=1000, 
+        help="Number of steps involved"
     )
     parser.add_argument(
-        "--eta",
-        type=float,
-        default=0.0,
+        "--eta", type=float, default=0.0,
         help="eta used to control the variances of sigma",
     )
     parser.add_argument(
-        "--cond", action="store_true", help="Conditional generation."
+        "--sequence", action="store_true",
+        help="Sampling from the sequence of images that lead to the sample"    
     )
-    parser.add_argument("--sequence", action="store_true")
 
     args = parser.parse_args()
     args.log_path = os.path.join(args.exp, "logs", args.doc)
@@ -109,8 +114,7 @@ def parse_args_and_config():
                 if args.ni:
                     overwrite = True
                 else:
-                    # response = input("Folder already exists. Overwrite? (Y/N)")
-                    response = "Y"
+                    response = input("Folder already exists. Overwrite? (Y/N)")
                     if response.upper() == "Y":
                         overwrite = True
 
@@ -214,6 +218,13 @@ def dict2namespace(config):
     return namespace
 
 
+def get_targets(y, b, k):
+    rtn = np.zeros(shape=(1, k), dtype=np.uint8)
+    rtn[0][y] = 1
+    rtn = torch.from_numpy(np.repeat(rtn, b, axis=0))
+    return rtn
+
+
 def main():
     args, config = parse_args_and_config()
     logging.info("Writing log file to {}".format(args.log_path))
@@ -223,7 +234,7 @@ def main():
     try:
         runner = Diffusion(args, config)
         if args.sample:
-            runner.sample()
+            runner.sample(y=get_targets(0, config.sampling.batch_size, config.model.cl))
         elif args.test:
             runner.test()
         else:

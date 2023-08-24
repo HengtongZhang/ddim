@@ -11,6 +11,7 @@ data:
 
 model:
     type: "simple"
+    cl: 10
     in_channels: 3
     out_ch: 3
     ch: 128
@@ -30,7 +31,7 @@ diffusion:
     num_diffusion_timesteps: 1000
 
 training:
-    batch_size: 128
+    batch_size: 64
     n_epochs: 10000
     n_iters: 5000000
     snapshot_freq: 5000

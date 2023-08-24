@@ -2,36 +2,41 @@ import numpy as np
 import h5py
 import os
 
-import multiprocessing
 from PIL import Image
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-# from scipy.misc import imresize
 target_size = 40
 image_size = 64
-num_cpus = multiprocessing.cpu_count()
+
+
+def crop_center(pil_img, crop_width, crop_height):
+    img_width, img_height = pil_img.size
+    return pil_img.crop(((img_width - crop_width) // 2,
+                         (img_height - crop_height) // 2,
+                         (img_width + crop_width) // 2,
+                         (img_height + crop_height) // 2))
 
 
 def process(f):
-    global image_size
-    im = Image.open(f)
-    im = im.resize((image_size, image_size), Image.LANCZOS)
-    # im = imresize(im, (image_size, image_size), interp='bicubic')
-    return im
+    with Image.open(f) as im:
+        im = crop_center(im, crop_width=178, crop_height=178)
+        im = im.resize((image_size, image_size), Image.LANCZOS)
+        rtn = np.asarray(im, dtype=np.uint8)
+        # im.save('11.jpg')
+        return rtn
 
 
 if __name__ == "__main__":
     ## Train
-    prefix = './img_align_celeba/'
+    prefix = "celeba/img_align_celeba/"
     l = list(map(lambda x : os.path.join(prefix, x), os.listdir(prefix)))
     samples = np.zeros((len(l), image_size, image_size, 3), dtype='uint8')
     targets = np.zeros((len(l), target_size), dtype='uint8')
     fns = []
     targets_dict = {}
 
-    with open("list_attr_celeba.txt") as fp:
+    with open("celeba/list_attr_celeba.txt") as fp:
         lines = fp.readlines()
         for line in lines[2: ]:
             entries = line.split()
@@ -44,7 +49,7 @@ if __name__ == "__main__":
         targets[i] = targets_dict[fn]
         fns.append(fn)
 
-    with h5py.File('./celeba-64.hdf5', 'w') as f:
+    with h5py.File("celeba/celeba-{}.hdf5".format(image_size), 'w') as f:
         f['fns'] = fns
         f['samples'] = samples
         f['targets'] = targets
