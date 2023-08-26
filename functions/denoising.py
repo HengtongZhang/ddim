@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 from tqdm import tqdm
 
 
@@ -49,7 +48,7 @@ def ddpm_steps(x, seq, model, b, y=None):
             atm1 = compute_alpha(betas, next_t.long())
             beta_t = 1 - at / atm1
             x = xs[-1].to('cuda')
-            _y = get_targets(y, model.module.cl, x.shape[0]).to('cuda')
+            _y = y.to('cuda')
             output = model(x, t.float(), y=_y)
             e = output
 

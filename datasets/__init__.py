@@ -3,7 +3,6 @@ import torch
 import torchvision.transforms as transforms
 from datasets.cifar import CIFAR10
 from datasets.celeba import CelebA
-# from torch.utils.data import Subset
 
 
 def get_dataset(args, config):

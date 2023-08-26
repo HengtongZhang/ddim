@@ -1,10 +1,8 @@
-import torchvision.transforms
 import os
 import h5py
 import PIL
 import numpy as np
 from .vision import VisionDataset
-from .utils import check_integrity
 
 
 class CelebA(VisionDataset):
