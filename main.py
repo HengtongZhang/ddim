@@ -38,9 +38,13 @@ def parse_args_and_config():
         "--data_dir", type=str, default=".",
         help="Path for the dataset."
     )
-    parser.add_argument(  # TODO: Check here.
+    parser.add_argument(
         "--cond", action="store_true",
         help="Conditional generation."
+    )
+    parser.add_argument(
+        "--y", type=int, default=0,
+        help="Condition label."
     )
     parser.add_argument(
         "--comment", type=str, default="",
@@ -234,7 +238,7 @@ def main():
     try:
         runner = Diffusion(args, config)
         if args.sample:
-            runner.sample(y=get_targets(0, config.sampling.batch_size, config.model.cl))
+            runner.sample(y=get_targets(args.y, config.sampling.batch_size, config.model.cl))
         elif args.test:
             runner.test()
         else:
