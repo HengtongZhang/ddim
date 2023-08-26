@@ -344,7 +344,7 @@ class Model(nn.Module):
         temb = nonlinearity(temb)
         temb = self.temb.dense[1](temb)
 
-        if y is not None:
+        if (y is not None) and self.cond:
             # label_emb = get_timestep_embedding(y, self.ch)
             label_emb = self.label_emb.dense[0](y.float())
             label_emb = nonlinearity(label_emb)
